@@ -44,6 +44,7 @@ func main() {
 	var pod complex128
 	var opponentPod complex128
 	var xTarget, yTarget, thrust string
+	var checkpointAngle, podAngle, opponentPodAngle, angleBetweenPods float64
 	turns := 0
 	boostUsed := new(bool)
 	*boostUsed = false
@@ -73,13 +74,23 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Pod coordinates : %.1f\n", pod)
 		fmt.Fprintf(os.Stderr, "Opponent pod coordinates : %.1f\n", opponentPod)
 		fmt.Fprintf(os.Stderr, "Checkpoint coordinates : %.1f\n", checkpoint)
-		fmt.Fprintf(os.Stderr, "Distance from pod to next checkpoint : %d\n", nextCheckpointDist)
 		fmt.Fprintf(os.Stderr, "Angle in degrees between pod and next checkpoint : %d\n", nextCheckpointAngle)
 		fmt.Fprintf(os.Stderr, "List of checkpoints : %v\n", checkpoints)
 		fmt.Fprintf(os.Stderr, "Number of checkpoints : %v\n", len(checkpoints))
 		fmt.Fprintf(os.Stderr, "Boost use ? : %t\n", *boostUsed)
-		fmt.Fprintf(os.Stderr, "Calculated distance between pod and checkpoint pod : %f\n", cmplx.Abs(checkpoint-pod))
+		fmt.Fprintf(os.Stderr, "Distance from pod to next checkpoint : %d\n", nextCheckpointDist)
+		fmt.Fprintf(os.Stderr, "Calculated distance between pod and checkpoint : %f\n", cmplx.Abs(checkpoint-pod))
+		fmt.Fprintf(os.Stderr, "Calculated distance between opponent pod and checkpoint : %f\n", cmplx.Abs(checkpoint-opponentPod))
 		fmt.Fprintf(os.Stderr, "Calculated distance between pod and opponent pod : %f\n", cmplx.Abs(opponentPod-pod))
+
+		_, checkpointAngle = cmplx.Polar(checkpoint)
+		_, podAngle = cmplx.Polar(pod)
+		_, opponentPodAngle = cmplx.Polar(opponentPod)
+		fmt.Fprintf(os.Stderr, "Calculated phases in radians for checkpoint, pod and opponentPod : %.1f %.1f %.1f\n", checkpointAngle, podAngle, opponentPodAngle)
+		_, angleBetweenPods = cmplx.Polar((pod - checkpoint) / (opponentPod - checkpoint))
+		fmt.Fprintf(os.Stderr, "Calculated angle in radians between the 2 vectors (Checkpoint, Pod) and (Checkpoint, OpponentPod) : %.3f\n", angleBetweenPods)
+		fmt.Fprintf(os.Stderr, "Calculated angle in degrees between the 2 vectors (Checkpoint, Pod) and (Checkpoint, OpponentPod) : %.3f\n", ToDegrees(angleBetweenPods))
+		//ToDegrees
 		// You have to output the target position
 		// followed by the power (0 <= thrust <= 100) or "BOOST" or "SHIELD"
 		// i.e.: "x y thrust"
