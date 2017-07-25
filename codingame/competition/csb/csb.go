@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"math/cmplx"
 	"os"
 	"strconv"
 )
@@ -44,6 +45,10 @@ func main() {
 	var opponentPod complex128
 	var xTarget, yTarget, thrust string
 	turns := 0
+	boostUsed := new(bool)
+	*boostUsed = false
+	thrustByTurn := make(map[int]string)
+	thrustByTurn[turns] = "0"
 	for {
 		// nextCheckpointX: x position of the next check point
 		// nextCheckpointY: y position of the next check point
@@ -64,20 +69,57 @@ func main() {
 		}
 
 		// fmt.Fprintln(os.Stderr, "Debug messages...")
-		fmt.Fprintf(os.Stderr, "pod : %.1f\n", pod)
-		fmt.Fprintf(os.Stderr, "opponentPod : %.1f\n", opponentPod)
-		fmt.Fprintf(os.Stderr, "checkpoint : %.1f\n", checkpoint)
-		fmt.Fprintf(os.Stderr, "distance to next checkpoint : %d\n", nextCheckpointDist)
-		fmt.Fprintf(os.Stderr, "angle in degrees to next with checkpoint : %d\n", nextCheckpointAngle)
-		fmt.Fprintf(os.Stderr, "list of checkpoints : %v\n", checkpoints)
+		fmt.Fprintf(os.Stderr, "Turn number : %d\n", turns)
+		fmt.Fprintf(os.Stderr, "Pod coordinates : %.1f\n", pod)
+		fmt.Fprintf(os.Stderr, "Opponent pod coordinates : %.1f\n", opponentPod)
+		fmt.Fprintf(os.Stderr, "Checkpoint coordinates : %.1f\n", checkpoint)
+		fmt.Fprintf(os.Stderr, "Distance from pod to next checkpoint : %d\n", nextCheckpointDist)
+		fmt.Fprintf(os.Stderr, "Angle in degrees between pod and next checkpoint : %d\n", nextCheckpointAngle)
+		fmt.Fprintf(os.Stderr, "List of checkpoints : %v\n", checkpoints)
+		fmt.Fprintf(os.Stderr, "Number of checkpoints : %v\n", len(checkpoints))
+		fmt.Fprintf(os.Stderr, "Boost use ? : %t\n", *boostUsed)
+		fmt.Fprintf(os.Stderr, "Calculated distance between pod and checkpoint pod : %f\n", cmplx.Abs(checkpoint-pod))
+		fmt.Fprintf(os.Stderr, "Calculated distance between pod and opponent pod : %f\n", cmplx.Abs(opponentPod-pod))
 		// You have to output the target position
 		// followed by the power (0 <= thrust <= 100) or "BOOST" or "SHIELD"
 		// i.e.: "x y thrust"
-		xTarget, yTarget, thrust = computeAction(checkpoint, nextCheckpointDist, nextCheckpointAngle, pod, opponentPod)
+		xTarget, yTarget, thrust = computeValues(checkpoint, nextCheckpointDist, nextCheckpointAngle, pod, opponentPod, boostUsed, turns)
+		thrustByTurn[turns] = thrust
 		fmt.Printf("%s %s %s\n", xTarget, yTarget, thrust)
 	}
 }
 
-func computeAction(checkpoint complex128, nextCheckpointDistance int, nextCheckpointAngle int, pod complex128, opponentPod complex128) (string, string, string) {
-	return strconv.Itoa(int(real(checkpoint))), strconv.Itoa(int(imag(checkpoint))), "100"
+func computeValues(checkpoint complex128, nextCheckpointDistance int, nextCheckpointAngle int, pod complex128, opponentPod complex128, boostUsed *bool, turns int) (string, string, string) {
+	return strconv.Itoa(int(real(checkpoint))), strconv.Itoa(int(imag(checkpoint))), computeAction(checkpoint, nextCheckpointDistance, nextCheckpointAngle, pod, opponentPod, boostUsed, turns)
+}
+
+/*
+computeAction return "BOOST", "SHIELD" or the thrust value
+*/
+func computeAction(checkpoint complex128, nextCheckpointDistance int, nextCheckpointAngle int, pod complex128, opponentPod complex128, boostUsed *bool, turns int) string {
+	if !*boostUsed && turns > MaxLoopBeforeBoost && math.Abs(float64(nextCheckpointAngle)) < 10 && nextCheckpointDistance > 4000 {
+		*boostUsed = true
+		return "BOOST"
+	}
+	return computeThrust(checkpoint, nextCheckpointDistance, nextCheckpointAngle, pod, opponentPod)
+}
+
+/*
+computeThrust compute the thrust value
+*/
+func computeThrust(checkpoint complex128, nextCheckpointDistance int, nextCheckpointAngle int, pod complex128, opponentPod complex128) string {
+	switch {
+	case math.Abs(float64(nextCheckpointAngle)) > 90:
+		return "0"
+	case nextCheckpointDistance < 600:
+		return "20"
+	case nextCheckpointDistance < 100 && math.Abs(float64(nextCheckpointAngle)) > 25:
+		return "0"
+	case nextCheckpointDistance < 1000:
+		return "40"
+	case nextCheckpointDistance < 2000:
+		return "80"
+	default:
+		return "100"
+	}
 }
