@@ -100,7 +100,7 @@ func main() {
 }
 
 func computeValues(checkpoint complex128, nextCheckpointDistance int, nextCheckpointAngle int, pod complex128, opponentPod complex128, boostUsed *bool, turns int) (string, string, string) {
-	target := computeTarget(checkpoint, nextCheckpointDistance, pod)
+	target := computeTarget(checkpoint, nextCheckpointDistance, nextCheckpointAngle, pod)
 	return strconv.Itoa(int(real(target))), strconv.Itoa(int(imag(target))), computeAction(checkpoint, nextCheckpointDistance, nextCheckpointAngle, pod, opponentPod, boostUsed, turns)
 	//return strconv.Itoa(int(real(checkpoint))), strconv.Itoa(int(imag(checkpoint))), computeAction(checkpoint, nextCheckpointDistance, nextCheckpointAngle, pod, opponentPod, boostUsed, turns)
 }
@@ -131,14 +131,18 @@ computeThrust compute the thrust value
 */
 func computeThrust(checkpoint complex128, nextCheckpointDistance int, nextCheckpointAngle int, pod complex128, opponentPod complex128, boostUsed *bool, turns int) string {
 	switch {
-	case math.Abs(float64(nextCheckpointAngle)) > 90 /* || nextCheckpointDistance < 600*/ :
+	// case *boostUsed && turns > 10 && cmplx.Abs(opponentPod-pod) <= 900 && math.Abs(float64(nextCheckpointAngle)) > 90:
+	// 	return "SHIELD"
+	case math.Abs(float64(nextCheckpointAngle)) >= 90 || (nextCheckpointDistance < 1000 && math.Abs(float64(nextCheckpointAngle)) >= 45) /* || nextCheckpointDistance < 600*/ :
 		return "0"
-	case nextCheckpointDistance < 600 && math.Abs(float64(nextCheckpointAngle)) > 45:
-		return "0"
-	case nextCheckpointDistance < 600 || (nextCheckpointDistance < 1000 && math.Abs(float64(nextCheckpointAngle)) > 45):
+	// case nextCheckpointDistance < 600 && math.Abs(float64(nextCheckpointAngle)) > 45:
+	// 	return "0"
+	case nextCheckpointDistance < 600 /* || (nextCheckpointDistance < 1000 && math.Abs(float64(nextCheckpointAngle)) > 45)*/ :
 		return "20"
 	case nextCheckpointDistance < 1000:
 		return "40"
+	case nextCheckpointDistance < 2000:
+		return "80"
 	// case nextCheckpointDistance < 1200:
 	// 	return "60"
 	// case nextCheckpointDistance < 1500:
@@ -149,15 +153,13 @@ func computeThrust(checkpoint complex128, nextCheckpointDistance int, nextCheckp
 	// 	return "50"
 	// case nextCheckpointDistance < 2000:
 	// 	return "90"
-	case *boostUsed && turns > 10 && cmplx.Abs(opponentPod-pod) <= 900 && math.Abs(float64(nextCheckpointAngle)) > 90:
-		return "SHIELD"
 	default:
 		return "100"
 	}
 }
 
-func computeTarget(checkpoint complex128, nextCheckpointDistance int, pod complex128) complex128 {
-	if nextCheckpointDistance > 1000 {
+func computeTarget(checkpoint complex128, nextCheckpointDistance int, nextCheckpointAngle int, pod complex128) complex128 {
+	if nextCheckpointDistance > 1500 {
 		intermediate := complex(real(pod), imag(checkpoint))
 		hypothenuse := cmplx.Abs(pod - checkpoint)
 		cosTheta := cmplx.Abs(intermediate-checkpoint) / hypothenuse
