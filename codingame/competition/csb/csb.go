@@ -100,7 +100,7 @@ func main() {
 }
 
 func computeValues(checkpoint complex128, nextCheckpointDistance int, nextCheckpointAngle int, pod complex128, opponentPod complex128, boostUsed *bool, turns int) (string, string, string) {
-	target := computeTarget(checkpoint, pod)
+	target := computeTarget(checkpoint, nextCheckpointDistance, pod)
 	return strconv.Itoa(int(real(target))), strconv.Itoa(int(imag(target))), computeAction(checkpoint, nextCheckpointDistance, nextCheckpointAngle, pod, opponentPod, boostUsed, turns)
 	//return strconv.Itoa(int(real(checkpoint))), strconv.Itoa(int(imag(checkpoint))), computeAction(checkpoint, nextCheckpointDistance, nextCheckpointAngle, pod, opponentPod, boostUsed, turns)
 }
@@ -113,46 +113,67 @@ func computeAction(checkpoint complex128, nextCheckpointDistance int, nextCheckp
 		*boostUsed = true
 		return "BOOST"
 	}
-	return computeThrust(checkpoint, nextCheckpointDistance, nextCheckpointAngle, pod, opponentPod)
+	return computeThrust(checkpoint, nextCheckpointDistance, nextCheckpointAngle, pod, opponentPod, boostUsed, turns)
 }
 
 /*
 computeThrust compute the thrust value
+(defn compute-thrust [next-checkpoint-distance next-checkpoint-angle]
+  (cond
+    (> (Math/abs next-checkpoint-angle) 90) "0"
+    ; (and (< next-checkpoint-distance 1000) (< (Math/abs next-checkpoint-angle) 30)) "50"
+    ; (< (Math/abs next-checkpoint-angle) 30) "100"
+    (< next-checkpoint-distance 600) "20"
+    (and (< next-checkpoint-distance 1000) (> (Math/abs next-checkpoint-angle) 25)) "0"
+    (< next-checkpoint-distance 1000) "40"
+    (< next-checkpoint-distance 2000) "80"
+    true "100"))
 */
-func computeThrust(checkpoint complex128, nextCheckpointDistance int, nextCheckpointAngle int, pod complex128, opponentPod complex128) string {
+func computeThrust(checkpoint complex128, nextCheckpointDistance int, nextCheckpointAngle int, pod complex128, opponentPod complex128, boostUsed *bool, turns int) string {
 	switch {
-	case math.Abs(float64(nextCheckpointAngle)) > 90 || nextCheckpointDistance <= 600:
+	case math.Abs(float64(nextCheckpointAngle)) > 90 /* || nextCheckpointDistance < 600*/ :
 		return "0"
+	case nextCheckpointDistance < 600 && math.Abs(float64(nextCheckpointAngle)) > 45:
+		return "0"
+	case nextCheckpointDistance < 600 || (nextCheckpointDistance < 1000 && math.Abs(float64(nextCheckpointAngle)) > 45):
+		return "20"
 	case nextCheckpointDistance < 1000:
 		return "40"
-	case nextCheckpointDistance < 1500:
-		return "80"
+	// case nextCheckpointDistance < 1200:
+	// 	return "60"
+	// case nextCheckpointDistance < 1500:
+	// 	return "80"
 	// case nextCheckpointDistance < 100 && math.Abs(float64(nextCheckpointAngle)) > 25:
 	// 	return "0"
 	// case nextCheckpointDistance < 1000:
 	// 	return "50"
 	// case nextCheckpointDistance < 2000:
 	// 	return "90"
+	case *boostUsed && turns > 10 && cmplx.Abs(opponentPod-pod) <= 900 && math.Abs(float64(nextCheckpointAngle)) > 90:
+		return "SHIELD"
 	default:
 		return "100"
 	}
 }
 
-func computeTarget(checkpoint complex128, pod complex128) complex128 {
-	intermediate := complex(real(pod), imag(checkpoint))
-	hypothenuse := cmplx.Abs(pod - checkpoint)
-	cosTheta := cmplx.Abs(intermediate-checkpoint) / hypothenuse
-	sinTheta := cmplx.Abs(pod-intermediate) / hypothenuse
-	var xTarget, yTarget float64
-	if real(checkpoint) > real(pod) {
-		xTarget = real(checkpoint) - PodRadius*cosTheta
-	} else {
-		xTarget = real(checkpoint) + PodRadius*cosTheta
+func computeTarget(checkpoint complex128, nextCheckpointDistance int, pod complex128) complex128 {
+	if nextCheckpointDistance > 1000 {
+		intermediate := complex(real(pod), imag(checkpoint))
+		hypothenuse := cmplx.Abs(pod - checkpoint)
+		cosTheta := cmplx.Abs(intermediate-checkpoint) / hypothenuse
+		sinTheta := cmplx.Abs(pod-intermediate) / hypothenuse
+		var xTarget, yTarget float64
+		if real(checkpoint) > real(pod) {
+			xTarget = real(checkpoint) - PodRadius*cosTheta
+		} else {
+			xTarget = real(checkpoint) + PodRadius*cosTheta
+		}
+		if imag(checkpoint) > imag(pod) {
+			yTarget = imag(checkpoint) - PodRadius*sinTheta
+		} else {
+			yTarget = imag(checkpoint) + PodRadius*sinTheta
+		}
+		return complex(xTarget, yTarget)
 	}
-	if imag(checkpoint) > imag(pod) {
-		yTarget = imag(checkpoint) - PodRadius*sinTheta
-	} else {
-		yTarget = imag(checkpoint) + PodRadius*sinTheta
-	}
-	return complex(xTarget, yTarget)
+	return checkpoint
 }
