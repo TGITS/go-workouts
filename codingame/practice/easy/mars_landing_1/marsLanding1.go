@@ -45,7 +45,7 @@ func main() {
 	}
 }
 
-// ComputeThrustPower vompute the thrust power that needs to be applied
+// ComputeThrustPower compute the thrust power that needs to be applied
 func computeThrustPower(currentPower int, currentVSpeed int) string {
 	switch {
 	case currentVSpeed > 39:
