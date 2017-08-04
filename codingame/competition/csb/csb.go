@@ -66,6 +66,7 @@ func main() {
 		pod = complex(float64(x), float64(y))
 		checkpoint = complex(float64(nextCheckpointX), float64(nextCheckpointY))
 		opponentPod = complex(float64(opponentX), float64(opponentY))
+		distanceBetweenPods := int(cmplx.Abs(opponentPod - pod))
 		// if _, ok := checkpoints[checkpoint]; ok != true {
 		// 	checkpoints[checkpoint] = struct{}{}
 		// }
@@ -81,8 +82,7 @@ func main() {
 		// fmt.Fprintf(os.Stderr, "Boost use ? : %t\n", *boostUsed)
 		fmt.Fprintf(os.Stderr, "Distance from pod to next checkpoint : %d\n", nextCheckpointDist)
 		// fmt.Fprintf(os.Stderr, "Calculated distance between pod and checkpoint : %f\n", cmplx.Abs(checkpoint-pod))
-		// fmt.Fprintf(os.Stderr, "Calculated distance between opponent pod and checkpoint : %f\n", cmplx.Abs(checkpoint-opponentPod))
-		// fmt.Fprintf(os.Stderr, "Calculated distance between pod and opponent pod : %f\n", cmplx.Abs(opponentPod-pod))
+		fmt.Fprintf(os.Stderr, "Calculated distance between pod and opponent pod : %d\n", distanceBetweenPods)
 
 		// _, checkpointAngle = cmplx.Polar(checkpoint)
 		// _, podAngle = cmplx.Polar(pod)
@@ -133,81 +133,58 @@ func computeThrust(checkpoint complex128, nextCheckpointDistance int, nextCheckp
 		return "60"
 	case math.Abs(float64(nextCheckpointAngle)) >= 30:
 		return "80"
-	// case *boostUsed && turns > 10 && cmplx.Abs(opponentPod-pod) <= 900 && math.Abs(float64(nextCheckpointAngle)) > 90:
-	// 	return "SHIELD"
-	// case math.Abs(float64(nextCheckpointAngle)) >= 90 || (nextCheckpointDistance < 1000 && math.Abs(float64(nextCheckpointAngle)) >= 25) /* || nextCheckpointDistance < 600*/ :
-	// 	return "0"
-	// case nextCheckpointDistance < 600 && math.Abs(float64(nextCheckpointAngle)) > 45:
-	// 	return "0"
-	// case nextCheckpointDistance < 600 /* || (nextCheckpointDistance < 1000 && math.Abs(float64(nextCheckpointAngle)) > 45)*/ :
-	// 	return "20"
-	// case nextCheckpointDistance < 1000:
-	// 	return "40"
-	// case nextCheckpointDistance < 2000:
-	// 	return "80"
-	// case nextCheckpointDistance < 1200:
-	// 	return "60"
-	// case nextCheckpointDistance < 1500:
-	// 	return "80"
-	// case nextCheckpointDistance < 100 && math.Abs(float64(nextCheckpointAngle)) > 25:
-	// 	return "0"
-	// case nextCheckpointDistance < 1000:
-	// 	return "50"
-	// case nextCheckpointDistance < 2000:
-	// 	return "90"
 	default:
 		return "100"
 	}
 }
 
+func computeAngle(a complex128, b complex128, hypothenuse float64) (float64, float64, float64) {
+	c := complex(real(a), imag(b))
+	// hypothenuse := cmplx.Abs(a - b)
+	cosTheta := cmplx.Abs(c-b) / hypothenuse
+	sinTheta := cmplx.Abs(a-c) / hypothenuse
+	theta := ToDegrees(math.Acos(cosTheta))
+	return cosTheta, sinTheta, theta
+}
+
 func computeTarget(checkpoint complex128, nextCheckpointDistance int, nextCheckpointAngle int, pod complex128) complex128 {
-	if nextCheckpointDistance > 300 {
-		intermediate := complex(real(pod), imag(checkpoint))
-		hypothenuse := cmplx.Abs(pod - checkpoint)
-		cosTheta := cmplx.Abs(intermediate-checkpoint) / hypothenuse
-		sinTheta := cmplx.Abs(pod-intermediate) / hypothenuse
-		var xTarget, yTarget float64
-		distances := make([]float64, 5, 5)
-		targetsByDistance := make(map[float64]complex128)
+	// intermediate := complex(real(pod), imag(checkpoint))
+	// hypothenuse := cmplx.Abs(pod - checkpoint)
+	// cosTheta := cmplx.Abs(intermediate-checkpoint) / hypothenuse
+	// sinTheta := cmplx.Abs(pod-intermediate) / hypothenuse
+	cosTheta, sinTheta, theta := computeAngle(pod, checkpoint, float64(nextCheckpointDistance))
+	fmt.Fprintf(os.Stderr, "cosTheta : %.1f\n", cosTheta)
+	fmt.Fprintf(os.Stderr, "sinTheta : %.1f\n", sinTheta)
+	fmt.Fprintf(os.Stderr, "theta : %.1f\n", theta)
+	// fmt.Fprintf(os.Stderr, "hypothenuse : %.1f\n", hypothenuse)
+	var xTarget, yTarget float64
+	distances := make([]float64, 5, 5)
+	targetsByDistance := make(map[float64]complex128)
 
-		distances[0] = hypothenuse
-		targetsByDistance[distances[0]] = checkpoint
-		index := 1
-		for i := 0; i < 2; i++ {
-			for j := 0; j < 2; j++ {
-				if i%2 != 0 {
-					xTarget = real(checkpoint) - PodRadius*cosTheta
-				} else {
-					xTarget = real(checkpoint) + PodRadius*cosTheta
-				}
-
-				if j%2 != 0 {
-					yTarget = imag(checkpoint) + PodRadius*sinTheta
-				} else {
-					yTarget = imag(checkpoint) - PodRadius*sinTheta
-				}
-				target := complex(xTarget, yTarget)
-				distances[index] = cmplx.Abs(pod - target)
-				targetsByDistance[distances[index]] = target
-				index++
+	distances[0] = float64(nextCheckpointDistance)
+	targetsByDistance[distances[0]] = checkpoint
+	index := 1
+	for i := 0; i < 2; i++ {
+		for j := 0; j < 2; j++ {
+			if i%2 != 0 {
+				xTarget = real(checkpoint) - PodRadius*cosTheta
+			} else {
+				xTarget = real(checkpoint) + PodRadius*cosTheta
 			}
+
+			if j%2 != 0 {
+				yTarget = imag(checkpoint) + PodRadius*sinTheta
+			} else {
+				yTarget = imag(checkpoint) - PodRadius*sinTheta
+			}
+			target := complex(xTarget, yTarget)
+			distances[index] = cmplx.Abs(pod - target)
+			targetsByDistance[distances[index]] = target
+			index++
 		}
-		sort.Float64s(distances)
-		// if real(checkpoint) > real(pod) {
-		// 	xTarget = real(checkpoint) - PodRadius*cosTheta
-		// 	//xTarget = real(checkpoint) + PodRadius*cosTheta
-		// } else {
-		// 	xTarget = real(checkpoint) + PodRadius*cosTheta
-		// 	//xTarget = real(checkpoint) - PodRadius*cosTheta
-		// }
-		// if imag(checkpoint) > imag(pod) {
-		// 	yTarget = imag(checkpoint) - PodRadius*sinTheta
-		// 	//yTarget = imag(checkpoint) + PodRadius*sinTheta
-		// } else {
-		// 	yTarget = imag(checkpoint) + PodRadius*sinTheta
-		// 	//yTarget = imag(checkpoint) - PodRadius*sinTheta
-		// }
-		return targetsByDistance[distances[0]]
 	}
-	return checkpoint
+	sort.Float64s(distances)
+	fmt.Fprintf(os.Stderr, "Distances from pod to potential target : %.1f\n", distances)
+	fmt.Fprintf(os.Stderr, "targetsByDistance : %v\n", targetsByDistance)
+	return targetsByDistance[distances[0]]
 }
