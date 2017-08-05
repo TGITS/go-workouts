@@ -1,17 +1,66 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+	"sort"
+)
 
-//import "os"
-
-/**
- * Auto-generated code below aims at helping you parse
- * the standard input according to the problem statement.
- **/
+/*
+ * Longest Palindrome
+ * A contribution by Coni
+ * https://www.codingame.com/ide/puzzle/longest-palindrome
+ * A palindrome is a sequence of letters which reads the same backward as forward, like “madam” for example.
+ * For a given input string S, you have to return the longest palindrome found within.
+ * If multiple substrings qualify, print them all in the same order as they appear in S.
+ *
+ * I have excluded from the results of findPalindromes the trivial 1 character palindrome
+ */
 
 func main() {
 	var s string
 	fmt.Scan(&s)
+	fmt.Fprintf(os.Stderr, "input string : %s\n", s)
+	results := findLongest(findPalindromes(s))
+	for _, s := range results {
+		fmt.Println(s)
+	}
+}
+
+//This solution with slice of strings to obtain substring will not function correctly
+//with string that has characters encoded on more than one byte
+func findPalindromes(s string) []string {
+	size := len(s)
+	//lastIndex := size - 1
+	palindromes := make([]string, 0)
+	for i := 0; i < size; i++ {
+		// j > i+1 to exclude the possibility of the trivial 1 character palindrome
+		for j := size; j > i+1; j-- {
+			if isPalindrome(s[i:j]) {
+				palindromes = append(palindromes, s[i:j])
+			}
+		}
+	}
+	return palindromes
+}
+
+func findLongest(slice []string) []string {
+	sizes := make([]int, 0)
+	stringBySize := make(map[int][]string)
+	for _, s := range slice {
+		size := len(s)
+		sizes = append(sizes, size)
+		if v, ok := stringBySize[size]; !ok {
+			v = make([]string, 0)
+			v = append(v, s)
+			stringBySize[size] = v
+		} else {
+			v = append(v, s)
+			stringBySize[size] = v
+		}
+	}
+	sort.Ints(sizes)
+	return stringBySize[sizes[len(sizes)-1]]
 }
 
 func isPalindrome(s string) bool {
