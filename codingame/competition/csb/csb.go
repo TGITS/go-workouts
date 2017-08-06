@@ -4,17 +4,17 @@ import (
 	"fmt"
 	"math"
 	"math/cmplx"
-	"os"
+	//"os"
 	"sort"
 	"strconv"
 )
 
 const (
-	CheckpointCoreSize  = 50
-	MaxLoopBeforeBoost  = 3
-	MaxLoopBeforeShield = 10
-	PodRadius           = 400
-	CheckpointRadius    = 600
+	CheckpointCoreSize = 50
+	//MaxLoopBeforeBoost  = 3
+	//MaxLoopBeforeShield = 10
+	PodRadius        = 400
+	CheckpointRadius = 600
 )
 
 // ToRadians convert the parameters corresponding to an angle in degrees int an angle in radians.
@@ -66,23 +66,23 @@ func main() {
 		pod = complex(float64(x), float64(y))
 		checkpoint = complex(float64(nextCheckpointX), float64(nextCheckpointY))
 		opponentPod = complex(float64(opponentX), float64(opponentY))
-		distanceBetweenPods := int(cmplx.Abs(opponentPod - pod))
+		//distanceBetweenPods := int(cmplx.Abs(opponentPod - pod))
 		// if _, ok := checkpoints[checkpoint]; ok != true {
 		// 	checkpoints[checkpoint] = struct{}{}
 		// }
 
 		// fmt.Fprintln(os.Stderr, "Debug messages...")
 		// fmt.Fprintf(os.Stderr, "Turn number : %d\n", turns)
-		fmt.Fprintf(os.Stderr, "Pod coordinates : %.1f\n", pod)
+		// fmt.Fprintf(os.Stderr, "Pod coordinates : %.1f\n", pod)
 		// fmt.Fprintf(os.Stderr, "Opponent pod coordinates : %.1f\n", opponentPod)
-		fmt.Fprintf(os.Stderr, "Checkpoint coordinates : %.1f\n", checkpoint)
-		fmt.Fprintf(os.Stderr, "Angle in degrees between pod and next checkpoint : %d\n", nextCheckpointAngle)
+		// fmt.Fprintf(os.Stderr, "Checkpoint coordinates : %.1f\n", checkpoint)
+		// fmt.Fprintf(os.Stderr, "Angle in degrees between pod and next checkpoint : %d\n", nextCheckpointAngle)
 		// fmt.Fprintf(os.Stderr, "List of checkpoints : %v\n", checkpoints)
 		// fmt.Fprintf(os.Stderr, "Number of checkpoints : %v\n", len(checkpoints))
 		// fmt.Fprintf(os.Stderr, "Boost use ? : %t\n", *boostUsed)
-		fmt.Fprintf(os.Stderr, "Distance from pod to next checkpoint : %d\n", nextCheckpointDist)
+		// fmt.Fprintf(os.Stderr, "Distance from pod to next checkpoint : %d\n", nextCheckpointDist)
 		// fmt.Fprintf(os.Stderr, "Calculated distance between pod and checkpoint : %f\n", cmplx.Abs(checkpoint-pod))
-		fmt.Fprintf(os.Stderr, "Calculated distance between pod and opponent pod : %d\n", distanceBetweenPods)
+		//fmt.Fprintf(os.Stderr, "Calculated distance between pod and opponent pod : %d\n", distanceBetweenPods)
 
 		// _, checkpointAngle = cmplx.Polar(checkpoint)
 		// _, podAngle = cmplx.Polar(pod)
@@ -111,7 +111,8 @@ func computeValues(checkpoint complex128, nextCheckpointDistance int, nextCheckp
 computeAction return "BOOST", "SHIELD" or the thrust value
 */
 func computeAction(checkpoint complex128, nextCheckpointDistance int, nextCheckpointAngle int, pod complex128, opponentPod complex128, boostUsed *bool, turns int) string {
-	if !*boostUsed && turns > MaxLoopBeforeBoost && math.Abs(float64(nextCheckpointAngle)) < 10 && nextCheckpointDistance > 4000 {
+	// if !*boostUsed && turns > MaxLoopBeforeBoost && math.Abs(float64(nextCheckpointAngle)) < 10 && nextCheckpointDistance > 4000 {
+	if !*boostUsed && math.Abs(float64(nextCheckpointAngle)) < 10 && nextCheckpointDistance > 6000 {
 		*boostUsed = true
 		return "BOOST"
 	}
@@ -152,10 +153,11 @@ func computeTarget(checkpoint complex128, nextCheckpointDistance int, nextCheckp
 	// hypothenuse := cmplx.Abs(pod - checkpoint)
 	// cosTheta := cmplx.Abs(intermediate-checkpoint) / hypothenuse
 	// sinTheta := cmplx.Abs(pod-intermediate) / hypothenuse
-	cosTheta, sinTheta, theta := computeAngle(pod, checkpoint, float64(nextCheckpointDistance))
-	fmt.Fprintf(os.Stderr, "cosTheta : %.1f\n", cosTheta)
-	fmt.Fprintf(os.Stderr, "sinTheta : %.1f\n", sinTheta)
-	fmt.Fprintf(os.Stderr, "theta : %.1f\n", theta)
+	//cosTheta, sinTheta, theta := computeAngle(pod, checkpoint, float64(nextCheckpointDistance))
+	cosTheta, sinTheta, _ := computeAngle(pod, checkpoint, float64(nextCheckpointDistance))
+	// fmt.Fprintf(os.Stderr, "cosTheta : %.1f\n", cosTheta)
+	// fmt.Fprintf(os.Stderr, "sinTheta : %.1f\n", sinTheta)
+	// fmt.Fprintf(os.Stderr, "theta : %.1f\n", theta)
 	// fmt.Fprintf(os.Stderr, "hypothenuse : %.1f\n", hypothenuse)
 	var xTarget, yTarget float64
 	distances := make([]float64, 5, 5)
@@ -184,7 +186,7 @@ func computeTarget(checkpoint complex128, nextCheckpointDistance int, nextCheckp
 		}
 	}
 	sort.Float64s(distances)
-	fmt.Fprintf(os.Stderr, "Distances from pod to potential target : %.1f\n", distances)
-	fmt.Fprintf(os.Stderr, "targetsByDistance : %v\n", targetsByDistance)
+	// fmt.Fprintf(os.Stderr, "Distances from pod to potential target : %.1f\n", distances)
+	// fmt.Fprintf(os.Stderr, "targetsByDistance : %v\n", targetsByDistance)
 	return targetsByDistance[distances[0]]
 }

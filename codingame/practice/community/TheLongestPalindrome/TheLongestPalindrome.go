@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"os"
+	// "os"
 	"sort"
 )
 
@@ -20,18 +20,17 @@ import (
 func main() {
 	var s string
 	fmt.Scan(&s)
-	fmt.Fprintf(os.Stderr, "input string : %s\n", s)
-	results := findLongest(findPalindromes(s))
+	// fmt.Fprintf(os.Stderr, "input string : %s\n", s)
+	results := findLongestPalindromes(s)
 	for _, s := range results {
 		fmt.Println(s)
 	}
 }
 
-//This solution with slice of strings to obtain substring will not function correctly
-//with string that has characters encoded on more than one byte
+//This solution with slices of strings to obtain substrings will not function correctly
+//with strings that have characters encoded on more than one byte
 func findPalindromes(s string) []string {
 	size := len(s)
-	//lastIndex := size - 1
 	palindromes := make([]string, 0)
 	for i := 0; i < size; i++ {
 		// j > i+1 to exclude the possibility of the trivial 1 character palindrome
@@ -63,6 +62,31 @@ func findLongest(slice []string) []string {
 	return stringBySize[sizes[len(sizes)-1]]
 }
 
+//This solution with slices of strings to obtain substrings will not function correctly
+//with strings that have characters encoded on more than one byte
+func findLongestPalindromes(s string) []string {
+	size := len(s)
+	palindromeMaxSize := 0
+	palindromes := make([]string, 0)
+	for i := 0; i < size && (size-i) >= palindromeMaxSize; i++ {
+		// j > i+1 to exclude the possibility of the trivial 1 character palindrome
+		for j := size; j > i+1; j-- {
+			current := s[i:j]
+			if currentSize := len(current); currentSize >= palindromeMaxSize {
+				if isPalindromeOptimized(current) {
+					if currentSize == palindromeMaxSize {
+						palindromes = append(palindromes, current)
+					} else if currentSize > palindromeMaxSize {
+						palindromeMaxSize = currentSize
+						palindromes = []string{current}
+					}
+				}
+			}
+		}
+	}
+	return palindromes
+}
+
 func isPalindrome(s string) bool {
 	runes := toRuneSlice(s)
 	reversed := make([]rune, len(runes))
@@ -87,6 +111,18 @@ func reverseRuneSlice(runes []rune) {
 		runes[i], runes[n-1-i] = runes[n-1-i], runes[i]
 	}
 
+}
+
+//Does not work with strings that have characters encoded on more than one byte
+//But for the CodinGame Puzzle with runes, it wasn't fast enough
+func isPalindromeOptimized(s string) bool {
+	n := len(s)
+	for i := 0; i < n/2; i++ {
+		if s[i] != s[n-1-i] {
+			return false
+		}
+	}
+	return true
 }
 
 // Adapted from https://stackoverflow.com/questions/1752414/how-to-reverse-a-string-in-go
