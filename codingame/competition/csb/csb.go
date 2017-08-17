@@ -20,18 +20,43 @@ const (
 
 // ToRadians convert the parameters corresponding to an angle in degrees int an angle in radians.
 // radians  = degrees * PI / 180
-func ToRadians(angleInDegrees float64) float64 { return angleInDegrees * math.Pi / 180 }
+func ToRadians(degrees int) int { return round(float64(degrees) * math.Pi / 180.0) }
 
 // ToDegrees convert the parameters corresponding to an angle in radians int an angle in degrees.
 // degreess = radians * 180 / PI
-func ToDegrees(angleInRadians float64) float64 { return angleInRadians * 180 / math.Pi }
+func ToDegrees(radians int) int { return round(float64(radians) * 180.0 / math.Pi) }
 
 //Round a float64 and convert it to an int32
-func round(val float64) int32 {
+func round(val float64) int {
 	if val < 0 {
-		return int32(val - 0.5)
+		return int(val - 0.5)
 	}
-	return int32(val + 0.5)
+	return int(val + 0.5)
+}
+
+//Representing the coordinate of a Game Element
+type Point struct {
+	X, Y int
+}
+
+//Calculating the Distance
+func (p1 *Point) Distance(p2 *Point) int {
+	x := p2.X - p1.X
+	y := p2.Y - p1.Y
+	return int((round(math.Sqrt(float64(x*x + y*y)))))
+}
+
+//representing a Pod in CSB
+type Pod struct {
+	Point
+	AngleToCP    int
+	DistanceToCp int
+	Thrust       bool
+	Shield       int // with possible value 0 (not recently used or more than 3), 3 (just used), 2 (used 1 turn ago), 1 (used 2 turns ago)
+}
+
+type Checkpoint struct {
+	Point
 }
 
 /**
@@ -197,7 +222,7 @@ func computeTarget(checkpoint complex128, nextCheckpointDistance int, nextCheckp
 	sort.Float64s(angles)
 	fmt.Fprintf(os.Stderr, "Distances from pod to potential target : %.1f\n", distances)
 	fmt.Fprintf(os.Stderr, "targetsByDistance : %v\n", targetsByDistance)
-	fmt.Fprintf(os.Stderr, "Abasolute value of the angle between pod and potential target : %.1f\n", angles)
+	fmt.Fprintf(os.Stderr, "Absolute value of the angle between pod and potential target : %.1f\n", angles)
 	fmt.Fprintf(os.Stderr, "targetsByAngle : %v\n", targetsByAngle)
 	//return targetsByDistance[distances[0]]
 	return targetsByAngle[angles[0]], int(distances[0]), int(angles[0])
