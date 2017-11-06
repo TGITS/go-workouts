@@ -5,7 +5,6 @@ import (
 	"math"
 	"math/cmplx"
 	"os"
-	//"os"
 	"sort"
 	"strconv"
 )
@@ -67,28 +66,36 @@ func NewTurnInfo(x, y, nextCheckpointX, nextCheckpointY, nextCheckpointDist, nex
 /*
 computeThrust compute the thrust value
 */
-func (turnInfo *TurnInfo) computeThrust() string {
+func (turnInfo *TurnInfo) computeThrust(realDistance int) string {
 	switch {
-	case turnInfo.Distance < 1000:
-		return "20"
-	case turnInfo.Distance < 600:
-		return "00"
-	case math.Abs(float64(turnInfo.Angle)) >= 90:
+	case math.Abs(float64(turnInfo.Angle)) >= 90 || realDistance < 401:
 		return "0"
-	case math.Abs(float64(turnInfo.Angle)) >= 72:
+	case realDistance < 801:
 		return "20"
-	case math.Abs(float64(turnInfo.Angle)) >= 54:
+	case math.Abs(float64(turnInfo.Angle)) >= 72 || realDistance < 1001:
 		return "40"
-	case math.Abs(float64(turnInfo.Angle)) >= 36:
+	case realDistance < 1201:
 		return "60"
-	case math.Abs(float64(turnInfo.Angle)) >= 18:
+	case realDistance < 1501:
 		return "80"
+	// case math.Abs(float64(turnInfo.Angle)) >= 72:
+	// 	return "40"
+	// case math.Abs(float64(turnInfo.Angle)) >= 54:
+	// 	return "40"
+	// case math.Abs(float64(turnInfo.Angle)) >= 36:
+	// 	return "60"
+	// case math.Abs(float64(turnInfo.Angle)) >= 18:
+	// 	return "80"
 	default:
 		return "100"
 	}
 }
 
-func (turnInfo *TurnInfo) computeTarget() (complex128, int, int) {
+// func (turnInfo *TurnInfo) computeTarget() (string, string) {
+// 	return strconv.Itoa(int(real(turnInfo.Checkpoint))), strconv.Itoa(int(imag(turnInfo.Checkpoint)))
+// }
+
+func (turnInfo *TurnInfo) computeTarget() (string, string, int) {
 	// intermediate := complex(real(pod), imag(checkpoint))
 	// hypothenuse := cmplx.Abs(pod - checkpoint)
 	// cosTheta := cmplx.Abs(intermediate-checkpoint) / hypothenuse
@@ -133,24 +140,24 @@ func (turnInfo *TurnInfo) computeTarget() (complex128, int, int) {
 		}
 	}
 	sort.Float64s(distances)
-	sort.Float64s(angles)
-	fmt.Fprintf(os.Stderr, "Distances from pod to potential target : %.1f\n", distances)
-	fmt.Fprintf(os.Stderr, "targetsByDistance : %v\n", targetsByDistance)
-	fmt.Fprintf(os.Stderr, "Absolute value of the angle between pod and potential target : %.1f\n", angles)
-	fmt.Fprintf(os.Stderr, "targetsByAngle : %v\n", targetsByAngle)
-	//return targetsByDistance[distances[0]]
-	return targetsByAngle[angles[0]], int(distances[0]), int(angles[0])
+	// sort.Float64s(angles)
+	// fmt.Fprintf(os.Stderr, "Distances from pod to potential target : %.1f\n", distances)
+	// fmt.Fprintf(os.Stderr, "targetsByDistance : %v\n", targetsByDistance)
+	// fmt.Fprintf(os.Stderr, "Absolute value of the angle between pod and potential target : %.1f\n", angles)
+	// fmt.Fprintf(os.Stderr, "targetsByAngle : %v\n", targetsByAngle)
+	// return strconv.Itoa(int(real(targetsByAngle[angles[0]]))), strconv.Itoa(int(imag(targetsByAngle[angles[0]])))
+	return strconv.Itoa(int(real(targetsByDistance[distances[0]]))), strconv.Itoa(int(imag(targetsByDistance[distances[0]]))), int(distances[0])
 }
 
 // GameInfo is a struct that gather all the global game information relative to the game
 type GameInfo struct {
-	Checkpoints []complex128
-	History     map[int]*TurnInfo
-	Boost       bool //True if a boost is available, false if the thrust of the player pod has already been used
-	Shield      int  //To mark if the shield has been used. With possible value 0 (not recently used or more than 3 turns ; the initial value), 3 (just used), 2 (used 1 turn ago), 1 (used 2 turns ago)
-	Turn        int  // 0 is the initial value
-	Lap         int  //The lap in which we are. This value has to be computed
-
+	Checkpoints    []complex128
+	History        map[int]*TurnInfo
+	Boost          bool //True if a boost is available, false if the thrust of the player pod has already been used
+	Shield         int  //To mark if the shield has been used. With possible value 0 (not recently used or more than 3 turns ; the initial value), 3 (just used), 2 (used 1 turn ago), 1 (used 2 turns ago)
+	Turn           int  // 0 is the initial value
+	Lap            int  //The lap in which we are. This value has to be computed
+	LastCheckpoint complex128
 }
 
 // NewGameInfo To create and initialize a new GameInfo (a pointer to GameInfo)
@@ -165,15 +172,16 @@ func NewGameInfo() *GameInfo {
 	gameInfo.Lap = 0
 	gameInfo.Checkpoints = make([]complex128, 0, 10)
 	gameInfo.History = make(map[int]*TurnInfo)
+	gameInfo.LastCheckpoint = 0 + 0i
 	return gameInfo
 }
 
 // UpdateHistory is a method that had a new TurnInfo in the GameInfo. Before it update the turn count, the checkpoint list and the Lap count if necessary
 func (gameInfo *GameInfo) UpdateHistory(turnInfo *TurnInfo) {
 	gameInfo.UpdateTurn()
-	if gameInfo.Lap == 0 {
-		gameInfo.UpdateCheckpoints(turnInfo.Checkpoint)
-	}
+	// if gameInfo.Lap == 0 {
+	gameInfo.UpdateCheckpoints(turnInfo.Checkpoint)
+	// }
 	gameInfo.History[gameInfo.Turn] = turnInfo
 }
 
@@ -194,24 +202,34 @@ func (gameInfo *GameInfo) UpdateTurn() {
 
 // UpdateCheckpoints is a method that update the list of checkpoints if necessary
 func (gameInfo *GameInfo) UpdateCheckpoints(checkpoint complex128) {
-	newCheckpoint, newLap := gameInfo.In(checkpoint)
-	if !newCheckpoint {
-		gameInfo.Checkpoints = append(gameInfo.Checkpoints, checkpoint)
-	}
-	if newLap {
-		gameInfo.Lap++
+	if checkpoint != gameInfo.LastCheckpoint {
+		newCheckpoint, newLap := gameInfo.In(checkpoint)
+		if gameInfo.Lap == 0 && !newCheckpoint {
+			fmt.Fprintf(os.Stderr, "Append %.1f to %v\n", checkpoint, gameInfo.Turn)
+			gameInfo.Checkpoints = append(gameInfo.Checkpoints, checkpoint)
+		}
+		if newLap {
+			fmt.Fprintf(os.Stderr, "New Lap\n")
+			gameInfo.Lap++
+		}
+		gameInfo.LastCheckpoint = checkpoint
 	}
 }
 
 // In is a method that checks if the complex number is in the slice Checkpoints and if it is a new turn
 func (gameInfo *GameInfo) In(complex complex128) (bool, bool) {
+	lastIndex := len(gameInfo.Checkpoints) - 1
 	for index, value := range gameInfo.Checkpoints {
 		if complex == value {
-			if index == 0 {
+			if index == lastIndex {
 				return true, true
 			}
 			return true, false
 		}
+		if index == lastIndex {
+			return false, true
+		}
+		return false, false
 	}
 	return false, false
 }
@@ -229,32 +247,32 @@ func (gameInfo *GameInfo) DumpInfo() {
 	fmt.Fprintf(os.Stderr, "Turn : %d\n", gameInfo.Turn)
 	fmt.Fprintf(os.Stderr, "Lap : %d\n", gameInfo.Lap)
 	fmt.Fprintf(os.Stderr, "Checkpoints : %v\n", gameInfo.Checkpoints)
-	fmt.Fprintf(os.Stderr, "Boost use ? : %t\n", gameInfo.Boost)
+	fmt.Fprintf(os.Stderr, "Boost available ? : %t\n", gameInfo.Boost)
 	turnInfo := gameInfo.getCurrentTurnInfo()
 	fmt.Fprintf(os.Stderr, "Checkpoint coordinates : %.1f\n", turnInfo.Checkpoint)
-	fmt.Fprintf(os.Stderr, "Palyer Pod coordinates : %.1f\n", turnInfo.PlayerPod)
+	fmt.Fprintf(os.Stderr, "Player Pod coordinates : %.1f\n", turnInfo.PlayerPod)
 	fmt.Fprintf(os.Stderr, "Opponent pod coordinates : %.1f\n", turnInfo.OpponentPod)
 	fmt.Fprintf(os.Stderr, "Angle in degrees between pod and next checkpoint : %d\n", turnInfo.Angle)
 	fmt.Fprintf(os.Stderr, "Distance from pod to next checkpoint : %d\n", turnInfo.Distance)
+	fmt.Fprintf(os.Stderr, "History : %v\n", gameInfo.History)
 }
 
 func (gameInfo *GameInfo) computeValues() (string, string, string) {
 	turnInfo := gameInfo.getCurrentTurnInfo()
-	target, _, _ := turnInfo.computeTarget()
-	return strconv.Itoa(int(real(target))), strconv.Itoa(int(imag(target))), gameInfo.computeAction()
-	//return strconv.Itoa(int(real(checkpoint))), strconv.Itoa(int(imag(checkpoint))), computeAction(checkpoint, nextCheckpointDistance, nextCheckpointAngle, pod, opponentPod, boostUsed, turns)
+	xTarget, yTarget, realDistance := turnInfo.computeTarget()
+	return xTarget, yTarget, gameInfo.computeAction(realDistance)
 }
 
 /*
 computeAction return "BOOST", "SHIELD" or the thrust value
 */
-func (gameInfo *GameInfo) computeAction() string {
+func (gameInfo *GameInfo) computeAction(realDistance int) string {
 	turnInfo := gameInfo.getCurrentTurnInfo()
-	if gameInfo.Boost && math.Abs(float64(turnInfo.Angle)) < 10 && turnInfo.Distance > 4000 {
+	if gameInfo.Boost && math.Abs(float64(turnInfo.Angle)) < 10 && realDistance > 4000 {
 		gameInfo.updateBoost()
 		return "BOOST"
 	}
-	return turnInfo.computeThrust()
+	return turnInfo.computeThrust(realDistance)
 }
 
 /**
