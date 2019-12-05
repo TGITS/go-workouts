@@ -10,8 +10,6 @@ var tests = []struct {
 	{"", "One for you, one for me."},
 	{"Alice", "One for Alice, one for me."},
 	{"Bob", "One for Bob, one for me."},
-	{"    ", "One for you, one for me."},
-	{"\t   \t ", "One for you, one for me."},
 }
 
 func TestShareWith(t *testing.T) {
